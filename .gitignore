@@ -1,6 +1,9 @@
-
 *.pyc
-
-CC2540_connection_req_crash.pcap
-
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+**/build/**
 release/
+*.egg
+
