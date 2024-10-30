@@ -4,6 +4,13 @@ import platform
 import sys
 from time import sleep
 
+RETURN_CODE_ERROR = 0
+RETURN_CODE_NOT_VULNERABLE = 1
+RETURN_CODE_VULNERABLE = 2
+RETURN_CODE_UNDEFINED = 3
+RETURN_CODE_NONE_OF_4_STATE_OBSERVED = 4
+RETURN_CODE_NOT_TESTED = 5
+
 # extra libs
 sys.path.insert(0, os.getcwd() + '/')  # If the user runs this on previous path
 sys.path.insert(0, os.getcwd() + '/libs')  # If the user runs this on previous path
@@ -40,6 +47,8 @@ accepted_keys = []
 # Autoreset colors
 colorama.init(autoreset=True)
 
+end_result = ""
+
 # Get serial port from command line
 if len(sys.argv) >= 2:
     serial_port = sys.argv[1]
@@ -65,6 +74,7 @@ print(Fore.YELLOW + 'Advertiser Address: ' + advertiser_address.lower())
 def crash_timeout():
     print(Fore.RED + "No advertisement from " + advertiser_address.lower() +
           ' received\nThe device may have crashed!!!')
+    end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data}".format(code=RETURN_CODE_VULNERABLE, data="The device may have crashed")
     disable_timeout('scan_timeout')
 
 
@@ -238,18 +248,24 @@ while True:
 
             if check_range(accepted_keys, 0, 6):
                 print(Fore.RED + 'Peripheral accepts key size lower than 7!!!')
+                end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data}".format(code=RETURN_CODE_VULNERABLE, data="Peripheral accepts key size lower than 7")
 
             elif check_range(accepted_keys, 7, 15):
                 print(Fore.RED + 'Peripheral allows key entropy reduction. The key size range is '
                                  '[' + str(min(accepted_keys)) + ',' + str(max(accepted_keys)) + ']')
+                end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data}".format(code=RETURN_CODE_VULNERABLE, data="Peripheral allows key entropy reduction. The key size range is [{} , {}]".format(min(accepted_keys), max(accepted_keys)))
             elif check_range(accepted_keys, 16, 17):
                 print(Fore.RED + 'Peripheral accepts key size greater than 16. Non-compliance!!!')
+                end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data}".format(code=RETURN_CODE_VULNERABLE, data="Peripheral accepts key size greater than 16. Non-compliance")
             elif check_range(accepted_keys, 16, 16) and not check_range(accepted_keys, 7, 15):
                 print(Fore.GREEN + 'Peripheral only accepts key size of 16. We are good to go!!!')
+                end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data}".format(code=RETURN_CODE_NOT_VULNERABLE, data="Peripheral only accepts key size of 16")
             else:
                 print(Fore.RED + 'Something went wrong during testing, check if the peripheral accepts pairing')
+                end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data}".format(code=RETURN_CODE_ERROR, data="Something went wrong during testing, check if the peripheral accepts pairing")
 
             print(Fore.YELLOW + 'Test finished')
-            exit(0)
+            print(end_result)
+            sys.exit(0)
 
 sleep(0.01)
