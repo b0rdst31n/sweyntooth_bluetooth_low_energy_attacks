@@ -54,7 +54,7 @@ class NRF52Dongle:
         self.n_log = logs
         self.n_debug = debug
         if pcap_filename == None:
-            self.pcap_filename = os.path.basename(__file__).split('.')[0] + '.pcap'
+            self.pcap_filename = 'logs/' + os.path.basename(__file__).split('.')[0] + '.pcap'
         else:
             self.pcap_filename = pcap_filename
 

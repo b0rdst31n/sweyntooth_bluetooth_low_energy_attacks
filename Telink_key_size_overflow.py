@@ -136,7 +136,7 @@ while True:
                 iocap=4, oob=0, authentication=0x05, max_key_size=253, initiator_key_distribution=0x07,
                 responder_key_distribution=0x07)
             driver.send(pairing_req)
-            wrpcap(os.path.basename(__file__).split('.')[0] + '.pcap',
+            wrpcap('logs/' + os.path.basename(__file__).split('.')[0] + '.pcap',
                    NORDIC_BLE(board=75, protocol=2, flags=0x3) / pairing_req)  # save packet just sent
 
         elif SM_Pairing_Response in pkt:
