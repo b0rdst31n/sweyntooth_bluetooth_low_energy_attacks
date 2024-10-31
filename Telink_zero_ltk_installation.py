@@ -366,6 +366,7 @@ while run_script:
             set_end_result(RETURN_CODE_VULNERABLE, "Decrypted an encrypted response using a zero LTK. Check zero_ltk.pcap for more info")
             end_connection = True
             driver.save_pcap()
+            print(end_result)
             exit(0)
 
         elif LL_REJECT_IND in pkt or SM_Failed in pkt:

