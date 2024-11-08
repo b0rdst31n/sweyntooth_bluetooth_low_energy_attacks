@@ -40,6 +40,7 @@ paring_auth_request = 0x08 | + 0x01  # Le Secure Connection + bounding
 SCAN_TIMEOUT = 2
 CRASH_TIMEOUT = 7
 none_count = 0
+scan_count = 0
 end_connection = False
 connecting = False
 conn_skd = None
@@ -95,12 +96,13 @@ def crash_timeout():
 
 
 def scan_timeout():
-    global connecting, slave_addr_type
+    global connecting, slave_addr_type, scan_count
     connecting = False
     scan_req = BTLE() / BTLE_ADV(RxAdd=slave_addr_type) / BTLE_SCAN_REQ(
         ScanA=master_address,
         AdvA=advertiser_address)
     driver.send(scan_req)
+    scan_count += 1
     start_timeout('scan_timeout', SCAN_TIMEOUT, scan_timeout)
 
 
@@ -220,6 +222,10 @@ start_timeout('scan_timeout', SCAN_TIMEOUT, scan_timeout)
 
 print(Fore.YELLOW + 'Waiting advertisements from ' + advertiser_address)
 while run_script:
+    if scan_count > 15:
+        set_end_result(RETURN_CODE_NOT_VULNERABLE, "Didn't receive advertisements from device (does not appear to be BLE)")
+        print(end_result)
+        sys.exit(0)
     pkt = None
     # Receive packet from the NRF52 Dongle
     data = driver.raw_receive()
