@@ -20,6 +20,9 @@ from scapy.utils import raw
 from timeout_lib import start_timeout, disable_timeout, update_timeout
 from Crypto.Cipher import AES
 
+# Autoreset colors
+colorama.init(autoreset=True)
+
 try:
     importlib.import_module('BLESMPServer')
 except:
@@ -37,7 +40,7 @@ end_result = ""
 
 def set_end_result(code, data):
     global end_result
-    end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data}".format(code=code, data=data)
+    end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data} STOP".format(code=code, data=data)
 
 # Default master address
 master_address = '5d:36:ac:90:0b:20'
@@ -73,9 +76,6 @@ fragment_left = 0
 fragment = None
 slave_txaddr = 0  # use public address by default
 run_script = True
-
-# Autoreset colors
-colorama.init(autoreset=True)
 
 # Get serial port from command line
 if len(sys.argv) >= 2:

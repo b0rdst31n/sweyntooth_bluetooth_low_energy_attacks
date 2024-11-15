@@ -52,7 +52,7 @@ end_result = ""
 
 def set_end_result(code, data):
     global end_result
-    end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data}".format(code=code, data=data)
+    end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data} STOP".format(code=code, data=data)
 
 # Get serial port from command line
 if len(sys.argv) >= 2:
@@ -134,7 +134,7 @@ start_timeout('scan_timeout', SCAN_TIMEOUT, scan_timeout)
 
 print(Fore.YELLOW + 'Waiting advertisements from ' + advertiser_address)
 while True:
-    if scan_count > 15:
+    if scan_count > 10:
         set_end_result(RETURN_CODE_NOT_VULNERABLE, "Didn't receive advertisements from device (does not appear to be BLE)")
         print(end_result)
         sys.exit(0)

